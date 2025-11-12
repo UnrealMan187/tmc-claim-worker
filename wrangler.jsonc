@@ -1,50 +1,46 @@
-/**
- * For more details on how to configure Wrangler, refer to:
- * https://developers.cloudflare.com/workers/wrangler/configuration/
- */
 {
-	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "tmc-claim-worker",
 	"main": "src/index.ts",
+	"account_id": "c11e84e0e8f98c82d43d45c08cb17204",
 	"compatibility_date": "2025-11-11",
-	"compatibility_flags": [
-		"global_fetch_strictly_public"
+  
+	// Deployment-Einstellungen
+	"workers_dev": false,          // Kein zusätzlicher .workers.dev-Zugang (wir nutzen eigene Domain)
+	"preview_urls": false,         // Deaktiviert temporäre Preview-URLs bei Deployments
+	"logpush": true,               // Optional: Logdaten via Logpush aktivieren (kann später konfiguriert werden)
+  
+	// KV-Binding (Claims-Datenbank)
+	"kv_namespaces": [
+	  {
+		"binding": "TMC_CLAIMS",
+		"id": "615db2f53efb4994ad634190c15a973e"
+	  }
 	],
-	"assets": {
-		// The path to the directory containing the `index.html` file to be served at `/`
-		"directory": "./public"
-	},
-	"observability": {
-		"enabled": true
+  
+	// R2-Binding (E-Books-Speicher)
+	"r2_buckets": [
+	  {
+		"binding": "tmc_ebooks",
+		"bucket_name": "tmc-ebooks"
+	  }
+	],
+  
+	// Route für produktiven Zugriff (Subdomain claim.themysterycode.de)
+	"routes": [
+	  {
+		"pattern": "claim.themysterycode.de/*",
+		"zone_name": "themysterycode.de"
+	  }
+	],
+  
+	// Optional: Environments (für spätere Staging-/Produktions-Deploys)
+	"env": {
+	  "production": {
+		"vars": {
+		  "ENVIRONMENT": "production"
+		}
+	  }
 	}
-	/**
-	 * Smart Placement
-	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
-	 */
-	// "placement": { "mode": "smart" }
-	/**
-	 * Bindings
-	 * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
-	 * databases, object storage, AI inference, real-time communication and more.
-	 * https://developers.cloudflare.com/workers/runtime-apis/bindings/
-	 */
-	/**
-	 * Environment Variables
-	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
-	 */
-	// "vars": { "MY_VARIABLE": "production_value" }
-	/**
-	 * Note: Use secrets to store sensitive data.
-	 * https://developers.cloudflare.com/workers/configuration/secrets/
-	 */
-	/**
-	 * Static Assets
-	 * https://developers.cloudflare.com/workers/static-assets/binding/
-	 */
-	// "assets": { "directory": "./public/", "binding": "ASSETS" }
-	/**
-	 * Service Bindings (communicate between multiple Workers)
-	 * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
-	 */
-	// "services": [{ "binding": "MY_SERVICE", "service": "my-service" }]
-}
+  }
+  
+  

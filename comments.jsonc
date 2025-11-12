@@ -1,0 +1,12 @@
+/* Kommentare für catalog*/
+
+/*weight: höhere Zahl ⇒ kommt häufiger.*/
+/*active:false: sofort pausiert (ohne Deploy).*/
+/*id: wird in Telegram gemeldet und als Dateiname im Download verwendet.*/
+
+/* Befehl zum aktualisieren von catalog.json */
+
+/*cd ~/Desktop/tmc-claim-worker
+
+# Schreibe den JSON-Inhalt in KV (Namespace-ID ist deine)
+wrangler kv key put --namespace-id 615db2f53efb4994ad634190c15a973e CATALOG_JSON --value "$(cat catalog.json)" --config wrangler.jsonc
