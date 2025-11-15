@@ -4,12 +4,16 @@
 	"account_id": "c11e84e0e8f98c82d43d45c08cb17204",
 	"compatibility_date": "2025-11-11",
   
-	// Deployment-Einstellungen
-	"workers_dev": false,          // Kein zusätzlicher .workers.dev-Zugang (wir nutzen eigene Domain)
-	"preview_urls": false,         // Deaktiviert temporäre Preview-URLs bei Deployments
-	"logpush": true,               // Optional: Logdaten via Logpush aktivieren (kann später konfiguriert werden)
+	"workers_dev": false,
+	"preview_urls": false,
+	"logpush": true,
   
-	// KV-Binding (Claims-Datenbank)
+	"vars": {
+	  "PAYPAL_ENV": "live",
+	  "MIN_AMOUNT_EUR": "10.00",
+	  "THANKYOU_URL": "https://themysterycode.de/thankyou.html?from=claim"
+	},
+  
 	"kv_namespaces": [
 	  {
 		"binding": "TMC_CLAIMS",
@@ -17,7 +21,6 @@
 	  }
 	],
   
-	// R2-Binding (E-Books-Speicher)
 	"r2_buckets": [
 	  {
 		"binding": "tmc_ebooks",
@@ -25,7 +28,6 @@
 	  }
 	],
   
-	// Route für produktiven Zugriff (Subdomain claim.themysterycode.de)
 	"routes": [
 	  {
 		"pattern": "claim.themysterycode.de/*",
@@ -33,7 +35,6 @@
 	  }
 	],
   
-	// Optional: Environments (für spätere Staging-/Produktions-Deploys)
 	"env": {
 	  "production": {
 		"vars": {
@@ -42,5 +43,4 @@
 	  }
 	}
   }
-  
   

@@ -1,0 +1,11 @@
+[
+    { "id": "ebook_demo",        "path": "ebooks/demo.pdf",        "weight": 1, "active": true, "category": "misc" },
+    { "id": "veg_easy",          "path": "ebooks/veg-easy.pdf",    "weight": 2, "active": true, "category": "vegan" },
+    { "id": "veg_premium",       "path": "ebooks/veg-premium.pdf", "weight": 1, "active": true, "category": "vegan" },
+    { "id": "urban_fast",        "path": "ebooks/urban-fast.pdf",  "weight": 2, "active": true, "category": "urban" },
+    { "id": "desserts",          "path": "ebooks/desserts.pdf",    "weight": 1, "active": true, "category": "sweet" },
+    { "id": "fitness",           "path": "ebooks/fitness.pdf",     "weight": 1, "active": true, "category": "health" },
+    { "id": "family",            "path": "ebooks/family.pdf",      "weight": 1, "active": true, "category": "family" },
+    { "id": "budget",            "path": "ebooks/budget.pdf",      "weight": 1, "active": true, "category": "saver" }
+  ]
+  

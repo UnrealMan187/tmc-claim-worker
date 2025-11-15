@@ -9,4 +9,4 @@
 /*cd ~/Desktop/tmc-claim-worker
 
 # Schreibe den JSON-Inhalt in KV (Namespace-ID ist deine)
-wrangler kv key put --namespace-id 615db2f53efb4994ad634190c15a973e CATALOG_JSON --value "$(cat catalog.json)" --config wrangler.jsonc
+wrangler kv key put --namespace-id 615db2f53efb4994ad634190c15a973e CATALOG_JSON --value "$(cat catalog.json)" --config wrangler.jsonc*/
