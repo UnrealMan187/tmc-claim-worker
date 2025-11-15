@@ -83,73 +83,109 @@ export interface Env {
   }
   
   /* ----------------------------- PAYPAL ----------------------------------- */
-  type PayPalAmount = { currency_code?: string; value?: string };
-  type PayPalOrder = {
-	id: string;
-	status: string; // APPROVED | COMPLETED | ...
-	purchase_units?: Array<{
-	  amount?: PayPalAmount;
-	  custom_id?: string;
-	  description?: string;
-	  payments?: { captures?: Array<{ id?: string; status?: string; amount?: PayPalAmount }> };
-	}>;
-  };
-  
-  function ppBase(env: Env) {
-	return env.PAYPAL_ENV === "live"
-	  ? "https://api-m.paypal.com"
-	  : "https://api-m.sandbox.paypal.com";
+
+type PayPalAmount = { currency_code?: string; value?: string };
+type PayPalOrder = {
+  id: string;
+  status: string; // APPROVED | COMPLETED | ...
+  purchase_units?: Array<{
+    amount?: PayPalAmount;
+    custom_id?: string;
+    description?: string;
+    payments?: { captures?: Array<{ id?: string; status?: string; amount?: PayPalAmount }> };
+  }>;
+};
+
+type PayPalEnvMode = "sandbox" | "live";
+
+/**
+ * Ermittelt, ob dieser Request im PayPal-Sandbox- oder Live-Modus laufen soll.
+ * - Primär über Query-Param ?pp_env=sandbox|live (vom Frontend gesetzt).
+ * - Fallback: env.PAYPAL_ENV ("live" | "sandbox").
+ */
+function getPayPalMode(req: Request, env: Env): PayPalEnvMode {
+  const url = new URL(req.url);
+  const q = (url.searchParams.get("pp_env") || "").toLowerCase();
+
+  if (q === "sandbox" || q === "live") {
+    return q;
   }
-  
-  async function getPayPalAccessToken(env: Env) {
-	if (!env.PAYPAL_CLIENT_ID || !env.PAYPAL_CLIENT_SECRET) {
-	  throw new Error("PayPal credentials missing");
-	}
-	const creds = btoa(`${env.PAYPAL_CLIENT_ID}:${env.PAYPAL_CLIENT_SECRET}`);
-	const r = await fetch(`${ppBase(env)}/v1/oauth2/token`, {
-	  method: "POST",
-	  headers: {
-		Authorization: `Basic ${creds}`,
-		"Content-Type": "application/x-www-form-urlencoded",
-	  },
-	  body: "grant_type=client_credentials",
-	});
-	if (!r.ok) throw new Error(`PayPal token error: ${r.status}`);
-	const j = (await r.json()) as { access_token: string };
-	return j.access_token;
+
+  // Fallback: Environment-Variable
+  return env.PAYPAL_ENV === "live" ? "live" : "sandbox";
+}
+
+/**
+ * Basispfad der PayPal-API abhängig vom Modus.
+ */
+function ppBase(mode: PayPalEnvMode) {
+  return mode === "live"
+    ? "https://api-m.paypal.com"
+    : "https://api-m.sandbox.paypal.com";
+}
+
+/**
+ * Holt ein OAuth2-Access-Token für die jeweilige Umgebung.
+ */
+async function getPayPalAccessToken(env: Env, mode: PayPalEnvMode) {
+  if (!env.PAYPAL_CLIENT_ID || !env.PAYPAL_CLIENT_SECRET) {
+    throw new Error("PayPal credentials missing");
   }
-  
-  async function fetchPayPalOrder(env: Env, id: string) {
-	const token = await getPayPalAccessToken(env);
-	const r = await fetch(`${ppBase(env)}/v2/checkout/orders/${id}`, {
-	  headers: { Authorization: `Bearer ${token}` },
-	});
-	if (!r.ok) throw new Error(`PayPal order error: ${r.status}`);
-	return (await r.json()) as PayPalOrder;
-  }
-  
-  async function capturePayPalOrder(env: Env, id: string) {
-	const token = await getPayPalAccessToken(env);
-	const r = await fetch(`${ppBase(env)}/v2/checkout/orders/${id}/capture`, {
-	  method: "POST",
-	  headers: {
-		Authorization: `Bearer ${token}`,
-		"Content-Type": "application/json",
-		"PayPal-Request-Id": crypto.randomUUID(),
-	  },
-	});
-	if (!r.ok) throw new Error(`PayPal capture error: ${r.status}`);
-	return (await r.json()) as PayPalOrder;
-  }
-  
-  function extractAmount(order: PayPalOrder) {
-	const pu = order.purchase_units?.[0];
-	const cap = pu?.payments?.captures?.[0]?.amount;
-	const src = cap || pu?.amount;
-	const amount = parseFloat(src?.value || "0");
-	const currency = (src?.currency_code || "EUR").toUpperCase();
-	return { amount: isNaN(amount) ? 0 : amount, currency };
-  }
+  const creds = btoa(`${env.PAYPAL_CLIENT_ID}:${env.PAYPAL_CLIENT_SECRET}`);
+  const r = await fetch(`${ppBase(mode)}/v1/oauth2/token`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${creds}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: "grant_type=client_credentials",
+  });
+  if (!r.ok) throw new Error(`PayPal token error: ${r.status}`);
+  const j = (await r.json()) as { access_token: string };
+  return j.access_token;
+}
+
+/**
+ * Holt eine bestehende PayPal-Order aus der API.
+ */
+async function fetchPayPalOrder(env: Env, id: string, mode: PayPalEnvMode) {
+  const token = await getPayPalAccessToken(env, mode);
+  const r = await fetch(`${ppBase(mode)}/v2/checkout/orders/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!r.ok) throw new Error(`PayPal order error: ${r.status}`);
+  return (await r.json()) as PayPalOrder;
+}
+
+/**
+ * Captured eine PayPal-Order in der jeweiligen Umgebung.
+ */
+async function capturePayPalOrder(env: Env, id: string, mode: PayPalEnvMode) {
+  const token = await getPayPalAccessToken(env, mode);
+  const r = await fetch(`${ppBase(mode)}/v2/checkout/orders/${id}/capture`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      "PayPal-Request-Id": crypto.randomUUID(),
+    },
+  });
+  if (!r.ok) throw new Error(`PayPal capture error: ${r.status}`);
+  return (await r.json()) as PayPalOrder;
+}
+
+/**
+ * Betrag + Währung aus der PayPal-Order extrahieren.
+ */
+function extractAmount(order: PayPalOrder) {
+  const pu = order.purchase_units?.[0];
+  const cap = pu?.payments?.captures?.[0]?.amount;
+  const src = cap || pu?.amount;
+  const amount = parseFloat(src?.value || "0");
+  const currency = (src?.currency_code || "EUR").toUpperCase();
+  return { amount: isNaN(amount) ? 0 : amount, currency };
+}
+
   
   /* ----------------------------- UTIL ------------------------------------- */
   async function notifyTelegram(env: Env, text: string) {
@@ -186,7 +222,7 @@ export interface Env {
   }
   
   /* ----------------------- CLAIM → Token erzeugen -------------------------- */
-  async function handlePayPalClaim(req: Request, env: Env) {
+async function handlePayPalClaim(req: Request, env: Env) {
 	const url = new URL(req.url);
 	const orderId = url.searchParams.get("order_id");
 	if (!orderId) {
@@ -196,6 +232,9 @@ export interface Env {
 	  );
 	}
   
+	// NEU: PayPal-Mode bestimmen (sandbox oder live)
+	const mode = getPayPalMode(req, env);
+  
 	const usedKey = `pp_used:${orderId}`;
 	if (await env.TMC_CLAIMS.get(usedKey)) {
 	  return html(
@@ -204,17 +243,17 @@ export interface Env {
 	  );
 	}
   
-	// Order prüfen & ggf. capturen – jetzt mit try/catch
+	// Order prüfen & ggf. capturen – jetzt mit mode
 	let order: PayPalOrder;
 	try {
-	  order = await fetchPayPalOrder(env, orderId);
+	  order = await fetchPayPalOrder(env, orderId, mode);
 	  if (order.status === "APPROVED") {
-		order = await capturePayPalOrder(env, orderId);
+		order = await capturePayPalOrder(env, orderId, mode);
 	  }
 	} catch (e: any) {
 	  await notifyTelegram(
 		env,
-		`❌ PayPal-Fehler bei Claim\nOrder: ${orderId}\n${e?.message || String(e)}`,
+		`❌ PayPal-Fehler bei Claim\nMode: ${mode}\nOrder: ${orderId}\n${e?.message || String(e)}`,
 	  );
 	  return html(
 		`<h1>Fehler bei der Zahlungsprüfung</h1>
@@ -269,9 +308,9 @@ export interface Env {
   
 	await notifyTelegram(
 	  env,
-	  `✅ PayPal Claim\nOrder: ${orderId}\nBetrag: ${amount.toFixed(
+	  `✅ PayPal Claim\nMode: ${mode}\nOrder: ${orderId}\nBetrag: ${amount.toFixed(
 		2,
-	  )} ${currency}\nE-Book: ${chosen.id}`,
+	  )} EUR\nE-Book: ${chosen.id}`,
 	);
   
 	const origin = new URL(req.url).origin;
@@ -287,13 +326,14 @@ export interface Env {
 	  .muted{opacity:.7}
 	</style></head>
 	<body><div class="wrap">
-	  <h1>Dein Link zum Download deiner Digitalen Datei.</h1>
+	  <h1>Dein Link zum Download deiner digitalen Datei.</h1>
 	  <p class="muted">${chosen.path.split("/").pop()}</p>
 	  <p><a class="btn" href="${urlDownload}">Jetzt herunterladen</a></p>
 	  <p class="muted">Der Link ist einmalig. Nach dem Download wirst du weitergeleitet.</p>
 	  ${footerSection()}
 	</div></body></html>`);
   }
+  
   
   /* ------------- /download/:token → HTML + JS + Redirect ------------------- */
   function renderDownloadOrchestrator(token: string, redirectTo: string) {
